@@ -4,7 +4,7 @@ Provider-agnostic text embedding layer, a counterpart to [hallucitron](https://g
 
 Here is essentially the whole idea:
 
-```
+```python
 class EmbeddingAbstract:
     def __init__(self):
         self.D = -1                # vector length, set by the subclass
@@ -27,7 +27,7 @@ class EmbeddingAbstract:
 
 ```
 
-Dependencies are just `httpx`, `pyyaml`, and `numpy`. `tiktoken` is optional and only sharpens token
+Dependencies are `httpx`, `pyyaml`, and `numpy`. `tiktoken` is optional and only sharpens token
 counts — without it, batching/truncation fall back to a cheap chars/4 estimate.
 
 

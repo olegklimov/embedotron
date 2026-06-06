@@ -10,7 +10,6 @@ up writing by hand:
 * Token-aware **batching** — pack many inputs under the provider's per-request token cap
 * Per-input **truncation** to the model's token limit, so one over-long input doesn't fail the call
 * **Retries with backoff** on 429 / 5xx / transport errors (honors `Retry-After`)
-* Per-input **cost** in integer "coins" (1 coin = $1e-6), returned alongside the vectors
 * numpy-native vectors plus **pgvector** serialization helpers
 * **Per-tenant configs** for SaaS setups — each tenant brings its own providers and keys
 
@@ -34,12 +33,12 @@ import embedotron as e
 
 async def main():
     emb = e.EmbeddingOpenAI(model="text-embedding-3-small", api_key="sk-...", normalize=True)
-    vecs, coins = await emb.ask_for_embedding([
+    vecs = await emb.ask_for_embedding([
         "The quick brown fox jumps over the lazy dog",
         "A fast auburn fox leaps above a sleepy hound",
         "Quantum chromodynamics describes the strong interaction",
     ])
-    print("D =", emb.D, "coins:", sum(coins))
+    print("D =", emb.D)
     print("fox vs fox    ", e.cosine(vecs[0], vecs[1]))
     print("fox vs physics", e.cosine(vecs[0], vecs[2]))
     # store the first vector in postgres (column type `vector`):
@@ -53,14 +52,14 @@ Or via the config, which handles multi-tenant key injection and picks the right 
 ```python
 cfg = e.load_default_config(use_env_keys=True)        # keys from OPENAI_API_KEY etc.
 emb = cfg.embedder_for("text-embedding-3-small", normalize=True)
-vecs, coins = await emb.ask_for_embedding([...])
+vecs = await emb.ask_for_embedding([...])
 ```
 
 No keys, no network (deterministic vectors — same text always embeds the same):
 
 ```python
 emb = e.EmbeddingRandom()
-vecs, _ = await emb.ask_for_embedding(["hello", "hello", "goodbye"])
+vecs = await emb.ask_for_embedding(["hello", "hello", "goodbye"])
 # e.cosine(vecs[0], vecs[1]) == 1.0
 ```
 

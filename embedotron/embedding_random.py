@@ -1,5 +1,5 @@
 import hashlib
-from typing import List, Tuple
+from typing import List
 
 import numpy as np
 
@@ -23,13 +23,13 @@ class EmbeddingRandom(embedding_abstract.EmbeddingAbstract):
     async def ask_for_embedding(
         self,
         texts: List[str],
-    ) -> Tuple[List[np.ndarray], List[int]]:
+    ) -> List[np.ndarray]:
         vectors = []
         for t in texts:
             seed = int.from_bytes(hashlib.sha256(t.encode("utf-8")).digest()[:8], "big")
             v = np.random.default_rng(seed).standard_normal(self.D).astype(np.float32)
             vectors.append(embedding_vecmath.normalize(v))
-        return vectors, [0] * len(texts)
+        return vectors
 
     def estimate_tokens(self, s: str) -> int:
         return len(s) // 4 + 1

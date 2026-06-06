@@ -49,7 +49,6 @@ class EmbeddingConfig:
                 normalize=normalize,
                 model_dimensions=m.get("modelcap_dimensions"),
                 model_max_tokens=m.get("modelcap_max_tokens"),
-                pp1000t_prompt=int(m.get("pp1000t_prompt", 0)),
             )
         raise RuntimeError("unknown provider kind %r for model %r" % (kind, model))
 

@@ -4,7 +4,7 @@
 #   providers:  map of provider-id -> {name, kind, endpoint, api_key, api_key_env, models: [...]}
 #   `kind` is the embedder class: "openai" (also covers tei/ollama/vllm/jina, all openai-compatible),
 #   "xai", or "random" (deterministic content-hash vectors, no network -- for tests and offline dev).
-#   models:     map of model-name -> overrides (modelcap_dimensions, modelcap_max_tokens, pp1000t_prompt).
+#   models:     map of model-name -> overrides (modelcap_dimensions, modelcap_max_tokens).
 #               Built-in OpenAI models (text-embedding-*) need no entry; the embedder knows them. Custom
 #               openai-compatible servers DO need modelcap_dimensions so the embedder knows the vector size.
 #

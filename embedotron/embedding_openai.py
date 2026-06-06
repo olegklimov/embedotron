@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 import httpx
 import numpy as np
@@ -24,9 +24,9 @@ MAX_TOKENS_PER_REQUEST = 300000
 RETRY_DELAYS = [1.0, 2.0, 4.0, 8.0]
 
 openai_embedding_models = {
-    "text-embedding-3-small": {"dimensions": 1536, "max_tokens": 8191, "pp1000t_prompt": 20},
-    "text-embedding-3-large": {"dimensions": 3072, "max_tokens": 8191, "pp1000t_prompt": 130},
-    "text-embedding-ada-002": {"dimensions": 1536, "max_tokens": 8191, "pp1000t_prompt": 100},
+    "text-embedding-3-small": {"dimensions": 1536, "max_tokens": 8191},
+    "text-embedding-3-large": {"dimensions": 3072, "max_tokens": 8191},
+    "text-embedding-ada-002": {"dimensions": 1536, "max_tokens": 8191},
 }
 
 
@@ -42,7 +42,6 @@ class EmbeddingOpenAI(embedding_abstract.EmbeddingAbstract):
         # For openai-compatible servers not in the table above, pass these instead of relying on the model name.
         model_dimensions: Optional[int] = None,
         model_max_tokens: Optional[int] = None,
-        pp1000t_prompt: int = 0,
     ):
         self.model = model
         self.api_key = api_key
@@ -53,22 +52,19 @@ class EmbeddingOpenAI(embedding_abstract.EmbeddingAbstract):
         if known:
             self.D = dimensions or known["dimensions"]
             self._max_tokens = known["max_tokens"]
-            self._pp1000t_prompt = known["pp1000t_prompt"]
         else:
             if model_dimensions is None:
                 raise ValueError("unknown model %r, pass model_dimensions/model_max_tokens for a custom server" % model)
             self.D = dimensions or model_dimensions
             self._max_tokens = model_max_tokens or 8191
-            self._pp1000t_prompt = pp1000t_prompt
 
     async def ask_for_embedding(
         self,
         texts: List[str],
-    ) -> Tuple[List[np.ndarray], List[int]]:
+    ) -> List[np.ndarray]:
         if not texts:
-            return [], []
+            return []
         texts = [_truncate_to_tokens(t, self._max_tokens) for t in texts]
-        coins = [(self.estimate_tokens(t) * self._pp1000t_prompt) // 1000 for t in texts]
 
         vectors: List[Optional[np.ndarray]] = [None] * len(texts)
         base = 0
@@ -86,7 +82,7 @@ class EmbeddingOpenAI(embedding_abstract.EmbeddingAbstract):
         missing = [i for i, v in enumerate(vectors) if v is None]
         if missing:
             raise RuntimeError("openai embeddings returned no vector for inputs %r" % missing)
-        return vectors, coins
+        return vectors
 
     def _split_into_batches(self, texts):
         batches, cur, cur_tokens = [], [], 0

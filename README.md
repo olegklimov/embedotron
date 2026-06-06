@@ -33,8 +33,10 @@ counts — without it, batching/truncation fall back to a cheap chars/4 estimate
 
 ## Providers
 
-* `EmbeddingOpenAI` — the OpenAI `/embeddings` API, which also covers the openai-compatible ecosystem (text-embedding-inference, Ollama, vLLM, Jina, xAI); point `base_url` at the server
-* `EmbeddingRandom` — deterministic content-hash vectors for tests and offline dev (no network, no key)
+* [x] `EmbeddingOpenAI` — the OpenAI `/embeddings` API, which also covers the openai-compatible ecosystem (text-embedding-inference, Ollama, vLLM, Jina, xAI); point `base_url` at the server
+* [x] `EmbeddingRandom` — deterministic content-hash vectors for tests and offline dev (no network, no key)
+* [ ] `Voyage` — Voyage AI, now owned by MongoDB — Voyage AI was acquired by MongoDB for $220M in February 2025. The original Voyage endpoint is the simpler one to test against.
+* [ ] Images support
 
 
 ## Example

@@ -1,91 +1,73 @@
 # Embedotron
 
-A small, provider-agnostic text **embedding** layer — the embeddings counterpart to
-[hallucitron](https://github.com/olegklimov/hallucitron) (which does chat/completions).
+Provider-agnostic text embedding layer, a counterpart to [hallucitron](https://github.com/olegklimov/hallucitron) which does chat/completions.
 
-An abstract `EmbeddingAbstract` with one method that matters, `ask_for_embedding`, and a couple of
-provider subclasses behind it. On top of the plain wrapper it adds the things every real caller ends
-up writing by hand:
+Here is essentially the whole idea:
 
-* Token-aware **batching** — pack many inputs under the provider's per-request token cap
-* Per-input **truncation** to the model's token limit, so one over-long input doesn't fail the call
-* **Retries with backoff** on 429 / 5xx / transport errors (honors `Retry-After`)
-* numpy-native vectors plus **pgvector** serialization helpers
-* **Per-tenant configs** for SaaS setups — each tenant brings its own providers and keys
+```
+class EmbeddingAbstract:
+    def __init__(self):
+        self.D = -1                # vector length, set by the subclass
 
-Providers:
+    # Returns one np.float32 vector per input text, in input order.
+    async def ask_for_embedding(
+        self,
+        texts: List[str],
+    ) -> List[np.ndarray]:
+        raise NotImplementedError()
 
-* `EmbeddingOpenAI` — the OpenAI `/embeddings` API, which also covers the openai-compatible ecosystem
-  (text-embedding-inference, Ollama, vLLM, Jina, xAI); point `base_url` at the server
-* `EmbeddingRandom` — deterministic content-hash vectors for tests and offline dev (no network, no key)
+    def estimate_tokens(self, s: str) -> int:
+        raise NotImplementedError()
+
+    def max_tokens(self) -> int:
+        raise NotImplementedError()
+
+    def throwaway_score(self) -> float:
+        raise NotImplementedError()
+
+```
 
 Dependencies are just `httpx`, `pyyaml`, and `numpy`. `tiktoken` is optional and only sharpens token
 counts — without it, batching/truncation fall back to a cheap chars/4 estimate.
 
 
-## Example
+## Providers
 
-Construct an embedder directly:
+* `EmbeddingOpenAI` — the OpenAI `/embeddings` API, which also covers the openai-compatible ecosystem (text-embedding-inference, Ollama, vLLM, Jina, xAI); point `base_url` at the server
+* `EmbeddingRandom` — deterministic content-hash vectors for tests and offline dev (no network, no key)
+
+
+## Example
 
 ```python
 import asyncio
 import embedotron as e
 
 async def main():
-    emb = e.EmbeddingOpenAI(model="text-embedding-3-small", api_key="sk-...", normalize=True)
+    cfg = e.load_default_config(use_env_keys=True)        # keys from OPENAI_API_KEY etc.
+    emb = cfg.embedder_for("text-embedding-3-large", normalize=False)
     vecs = await emb.ask_for_embedding([
-        "The quick brown fox jumps over the lazy dog",
-        "A fast auburn fox leaps above a sleepy hound",
-        "Quantum chromodynamics describes the strong interaction",
+        "Turning coffee into deliverables since 8:03 AM",
+        "午前 8 時 3 分からコーヒーを成果物に変える",       # the same joke in Japanese
+        "Reducing risk by increasing paperwork",
     ])
-    print("D =", emb.D)
-    print("fox vs fox    ", e.cosine(vecs[0], vecs[1]))
-    print("fox vs physics", e.cosine(vecs[0], vecs[2]))
-    # store the first vector in postgres (column type `vector`):
+    print("EN coffee <-> JA coffee   ", e.cosine(vecs[0], vecs[1]))
+    print("EN coffee <-> EN paperwork", e.cosine(vecs[0], vecs[2]))
+    # store in postgres (column type `vector`):
     #   await conn.execute("INSERT INTO t (emb) VALUES ($1::vector)", e.to_pgvector(vecs[0]))
 
 asyncio.run(main())
 ```
 
-Or via the config, which handles multi-tenant key injection and picks the right embedder:
-
-```python
-cfg = e.load_default_config(use_env_keys=True)        # keys from OPENAI_API_KEY etc.
-emb = cfg.embedder_for("text-embedding-3-small", normalize=True)
-vecs = await emb.ask_for_embedding([...])
-```
-
-No keys, no network (deterministic vectors — same text always embeds the same):
-
-```python
-emb = e.EmbeddingRandom()
-vecs = await emb.ask_for_embedding(["hello", "hello", "goodbye"])
-# e.cosine(vecs[0], vecs[1]) == 1.0
-```
-
-
-## Configuration
-
-`providers_default.yaml` is the built-in config: a map of providers (each with a `kind`, endpoint,
-key, and the model names it owns). A real multi-tenant deployment supplies its own config with
-per-tenant keys; pass `use_env_keys=True` to fill keys from the environment, or `use_test_keys=True`
-to read them from `.test_api_keys` for local runs.
-
-To add a local embedding server, set a provider's `endpoint` to it, list the models you serve, and
-give each a `modelcap_dimensions` (the embedder can't guess the vector size). TEI, Ollama, and vLLM
-all speak the OpenAI `/embeddings` wire, so `kind: openai` just works.
-
 
 ## Testing
 
-The pgvector test runs offline. The OpenAI tests hit the real API (a fraction of a cent) and are
-skipped when no key is present.
+`embedding_test.py` hits the real OpenAI API (a fraction of a cent) and is skipped when no key is
+present:
 
 ```sh
-cp .test_api_keys.example .test_api_keys   # add your keys (optional, for the live tests)
-
-PYTHONPATH=. python embedotron/embedding_test.py            # all; live providers skipped if no key
-PYTHONPATH=. python embedotron/embedding_test.py openai     # a subset by name
+cp .test_api_keys.example .test_api_keys   # add your key for the live test
+PYTHONPATH=. python embedotron/embedding_test.py
 ```
 
 `.test_api_keys` holds live secrets and is git-ignored. Never commit it. If one leaks, rotate it.

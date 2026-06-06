@@ -1,0 +1,59 @@
+# Default embedotron configuration: providers and the embedding models each owns.
+#
+# Shape:
+#   providers:  map of provider-id -> {name, kind, endpoint, api_key, api_key_env, models: [...]}
+#   `kind` is the embedder class: "openai" (also covers tei/ollama/vllm/jina, all openai-compatible),
+#   "xai", or "random" (deterministic content-hash vectors, no network -- for tests and offline dev).
+#   models:     map of model-name -> overrides (modelcap_dimensions, modelcap_max_tokens, pp1000t_prompt).
+#               Built-in OpenAI models (text-embedding-*) need no entry; the embedder knows them. Custom
+#               openai-compatible servers DO need modelcap_dimensions so the embedder knows the vector size.
+#
+# A provider OWNS a set of models (by name). embedder_for(model) finds the single owning provider and
+# constructs the right embedder.
+#
+# API keys: `api_key` is the literal key (empty here; a real deployment injects per-tenant keys or fills
+# them from env via load_default_config(use_env_keys=True), naming the var in `api_key_env`).
+
+providers:
+  openai_global:
+    name: OpenAI
+    kind: openai
+    endpoint: https://api.openai.com/v1
+    api_key: ""
+    api_key_env: OPENAI_API_KEY
+    models:
+      - text-embedding-3-small
+      - text-embedding-3-large
+      - text-embedding-ada-002
+
+  # Local text-embedding-inference / Ollama / vLLM speak the same /embeddings wire. Point endpoint at
+  # the local server (most need no key) and give each model its modelcap_dimensions below.
+  local_tei:
+    name: Local (TEI/Ollama/vLLM)
+    kind: openai
+    endpoint: http://localhost:8080/v1
+    api_key: ""
+    models:
+      - nomic-embed-text
+
+  random_provider:
+    name: Random (offline/tests)
+    kind: random
+    endpoint: ""
+    api_key: ""
+    models:
+      - random-1536
+      - random-768
+
+models:
+  # OpenAI models (text-embedding-*) are built into the embedder, no entry needed here.
+
+  # Custom openai-compatible server: dimensions are required, the embedder can't guess them.
+  nomic-embed-text:
+    modelcap_dimensions: 768
+    modelcap_max_tokens: 8192
+
+  random-1536:
+    modelcap_dimensions: 1536
+  random-768:
+    modelcap_dimensions: 768

@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "embedotron"
+version = "0.1.0"
+description = "Provider-agnostic text embedding layer for OpenAI-compatible providers, with token-aware batching, pricing, and pgvector helpers"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+    "httpx>=0.24",
+    "pyyaml>=6",
+    "numpy>=1.21",
+]
+
+[project.optional-dependencies]
+tiktoken = ["tiktoken>=0.5"]
+test = ["pytest>=7"]
+
+[tool.setuptools]
+packages = ["embedotron"]

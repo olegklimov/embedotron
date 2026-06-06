@@ -66,8 +66,9 @@ asyncio.run(main())
 present:
 
 ```sh
+pip install -e .                           # or: pip install -e .[tiktoken]
 cp .test_api_keys.example .test_api_keys   # add your key for the live test
-PYTHONPATH=. python embedotron/embedding_test.py
+python embedotron/embedding_test.py
 ```
 
 `.test_api_keys` holds live secrets and is git-ignored. Never commit it. If one leaks, rotate it.
